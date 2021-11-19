@@ -50,7 +50,6 @@ func StoreResultInMap(rows *sql.Rows) (map[string][]string, error) {
 			return nil, errors.New("too few values in row")
 		}
 		res[values[0]] = values[1:]
-		fmt.Println(values)
 	}
 
 	return res, nil
@@ -60,14 +59,15 @@ func StoreResultInMap(rows *sql.Rows) (map[string][]string, error) {
 func Query(key string, table string, extra string) (map[string][]string, error) {
 	sentence := "SELECT " + key + " FROM " + table + extra
 	rows, err := db.Query(sentence)
-	checkErr(err)
+	if err != nil {
+		return nil, errors.Wrapf(err, "fail to query db, sentence: %s", sentence)
+	}
 
 	m, err := StoreResultInMap(rows)
 	if err != nil {
 		return nil, errors.Wrap(err, "fail to store result in map")
 	}
 
-	fmt.Println(m)
 	return m, nil
 }
 
@@ -124,7 +124,6 @@ func createUnfilledRow(keyNum int) string {
 }
 
 func InsertOrUpdate(keys []string, valuesMap map[string][]string, table string) error {
-
 	unfilled := createUnfilledRow(len(keys))
 	for i, _ := range keys {
 		keys[i] = keys[i] + "=VALUES(" + keys[i] + ")"
@@ -141,12 +140,12 @@ func InsertOrUpdate(keys []string, valuesMap map[string][]string, table string) 
 			fmt.Printf("progress: %d percent\n", int(percent*100))
 		}
 
-		filename := fmt.Sprintf("index_files/c_inverted_list_%s", token)
+		filename := fmt.Sprintf("tid_%s", ConvStrToHex(token))
 		sentence := "Insert INTO " + table + " VALUES" + unfilled + " ON DUPLICATE KEY UPDATE " + strings.Join(keys[1:], ",")
 		//fmt.Printf("trying to execute statement: %s", sentence)
 		stmt, err := db.Prepare(sentence)
 		if err != nil {
-			return errors.Wrap(err, "fail to prepare sentence")
+			return errors.Wrapf(err, "fail to prepare sentence: %s", sentence)
 		}
 
 		values := []interface{}{token, strList[0], filename}
@@ -154,15 +153,16 @@ func InsertOrUpdate(keys []string, valuesMap map[string][]string, table string) 
 
 		_, err = stmt.Exec(values...)
 		if err != nil {
-			return errors.Wrap(err, "fail to execute sentence")
+			return errors.Wrapf(err, "fail to execute sentence: %s with values: %v", sentence, values)
 		}
 
-		err = stmt.Close()
+		err = stmt.Close() // TODO: 这里非常重要，一定要记得及时close statement
 		if err != nil {
 			return errors.Wrap(err, "fail to close statement")
 		}
 
-		err = WriteFile(filename, strList[1])
+		fileLoc := "/Users/lisbon/Desktop/seeker/index_files/" + filename
+		err = AppendFile(fileLoc, strList[1])
 		if err != nil {
 			return errors.Wrap(err, "fail to write index file")
 		}

@@ -14,7 +14,7 @@ import (
 
 const (
 	InvertedIndexDB = "t_inverted_index"
-	TokenColumn     = "c_token_id"
+	TokenColumn     = "c_token"
 	DocColumn       = "c_doc_id"
 	PosColumn       = "c_index_file"
 
@@ -82,9 +82,10 @@ func InsertOrUpdateTokensInDB(freshMap map[string][]string) error {
 	if len(freshMap) < 1 {
 		return errors.New("invalid map size")
 	}
-	tokens := make([]string, len(freshMap))
+	tokens := make([]string, 0)
 	for token, _ := range freshMap {
-		tokens = append(tokens, token)
+		s := "'" + token + "'"
+		tokens = append(tokens, s)
 	}
 	extraInfo := " WHERE c_token IN (" + strings.Join(tokens, ",") + ")"
 	oldMap, err := tool.Query("*", InvertedIndexDB, extraInfo)
@@ -92,14 +93,12 @@ func InsertOrUpdateTokensInDB(freshMap map[string][]string) error {
 		return errors.Wrap(err, "fail to query DB in Func:InsertOrUpdateTokensInDB()")
 	}
 
-	// current old Map: m["hello"][]string{"doc_001,doc_002","doc_001:1,2,3,4;doc_002:5,6,7,8"}
 	for token, values := range freshMap {
 		if _, ok := oldMap[token]; ok {
 			if len(oldMap[token]) < 2 || len(values) < 2 {
 				return errors.Wrap(err, "invalid length of map elements")
 			}
 			freshMap[token][0] = oldMap[token][0] + "," + values[0]
-			freshMap[token][1] = oldMap[token][1] + ";" + values[1]
 		}
 	}
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"goseeker/handlers"
 	"goseeker/tool"
@@ -10,8 +11,8 @@ import (
 func Test_Main(t *testing.T) {
 	fmt.Println("start loading...")
 
-	for i := 1; i < 2; i++ {
-		filename := fmt.Sprintf("corpus/wiki_%02d", i)
+	for i := 1; i <= 2; i++ {
+		filename := fmt.Sprintf("/Users/lisbon/Desktop/seeker/docs/AA/doc_%02d", i)
 		fmt.Printf("trying to open %s\n", filename)
 		content, err := tool.LoadFile(filename)
 		if err != nil {
@@ -21,8 +22,7 @@ func Test_Main(t *testing.T) {
 
 		docID := fmt.Sprintf("doc_%03d", i)
 		tokenDict := handlers.TextToTokens(content, docID)
-		keys := []string{handlers.TokenColumn, handlers.DocColumn, handlers.PosColumn}
-		err = tool.InsertOrUpdate(keys, tokenDict, handlers.InvertedIndexDB)
+		err = handlers.InsertOrUpdateTokensInDB(tokenDict)
 		if err != nil {
 			panic(err)
 		}
@@ -45,16 +45,25 @@ func Test_Main(t *testing.T) {
 	//}
 }
 
-func Test_Func(t *testing.T) {
-	filename := fmt.Sprintf("corpus/wiki_%02d", 1)
-	fmt.Printf("trying to open %s\n", filename)
-	content, err := tool.LoadFile(filename)
-	if err != nil {
-		panic(err)
+func Test_LoadWiki(t *testing.T) {
+	counter := 1
+	for i := 0; i < 100; i++ {
+		if i%10 == 0 {
+			fmt.Printf("handling file No.%d\n", i)
+		}
+		filename := fmt.Sprintf("/Users/lisbon/Desktop/seeker/wiki_zh/AA/wiki_%02d", i)
+		freshCounter, err := tool.LoadWiki(filename, counter)
+		if err != nil {
+			panic(err)
+		}
+		counter = freshCounter
 	}
-	//fmt.Println(content)
+}
 
-	docID := fmt.Sprintf("doc_%03d", 1)
-	tokenDict := handlers.TextToTokens(content, docID)
-	fmt.Printf("len: %d", len(tokenDict))
+func Test_Small(t *testing.T) {
+	a := "五年计划"
+	s := fmt.Sprintf("%x", []byte(a))
+	fmt.Println(s)
+	ori, _ := hex.DecodeString(s)
+	fmt.Printf("%s", ori)
 }
